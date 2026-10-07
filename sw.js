@@ -1,6 +1,6 @@
 // Guarda os arquivos do app para funcionar sem internet.
 // Ao mudar algum arquivo, aumente a versão para o celular baixar de novo.
-const CACHE = 'meu-treino-v2';
+const CACHE = 'oasis-v3';
 // Fotos e passo a passo dos exercícios (CDN): guardados conforme você abre, para ver offline depois.
 const CACHE_MIDIA = 'meu-treino-midia-v1';
 const ARQUIVOS = [
@@ -11,6 +11,7 @@ const ARQUIVOS = [
   './storage.js',
   './data/exercicios.js',
   './data/base.js',
+  './data/passos-pt.json',
   './data/modelos.js',
   './components/corpo.js',
   './components/grafico.js',

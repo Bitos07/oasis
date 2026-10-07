@@ -553,22 +553,34 @@ function viewExercicio([, idEnc]) {
   };
 }
 
-// Passo a passo vem da base aberta (em inglês), com atalho para traduzir.
+// Passo a passo traduzido (data/passos-pt.json, baixado uma vez). Se faltar, usa o original em inglês.
+let passosPT = null;
+function carregarPassosPT() {
+  passosPT ||= fetch('data/passos-pt.json').then((r) => r.json()).catch(() => ({}));
+  return passosPT;
+}
 async function carregarInstrucoes(e) {
   const url = instrucoesURL(e);
   if (!url) return;
   let html;
-  try {
-    const dados = await (await fetch(url)).json();
-    const passos = dados.instructions || [];
-    if (!passos.length) throw new Error('vazio');
-    const texto = passos.map((p, i) => `${i + 1}. ${p}`).join('\n');
-    html = `<details class="passos"><summary>Passo a passo detalhado (em inglês)</summary>
-      <ol>${passos.map((p) => `<li>${esc(p)}</li>`).join('')}</ol>
-      <a class="link" href="https://translate.google.com/?sl=en&tl=pt&op=translate&text=${encodeURIComponent(texto)}" target="_blank" rel="noopener">Traduzir para o português ↗</a>
-    </details>`;
-  } catch {
-    html = '<p class="mudo peq-txt">Passo a passo indisponível sem internet.</p>';
+  const pt = (await carregarPassosPT())[e.img];
+  if (pt?.length) {
+    html = `<p class="rotulo">Passo a passo</p><ol class="passos-lista">${pt.map((p) => `<li>${esc(p)}</li>`).join('')}</ol>`;
+  } else {
+    try {
+      const dados = await (await fetch(url)).json();
+      const passos = dados.instructions || [];
+      if (!passos.length) throw new Error('vazio');
+      const texto = passos.map((p, i) => `${i + 1}. ${p}`).join('\n');
+      html = `<details class="passos"><summary>Passo a passo detalhado (em inglês)</summary>
+        <ol>${passos.map((p) => `<li>${esc(p)}</li>`).join('')}</ol>
+        <a class="link" href="https://translate.google.com/?sl=en&tl=pt&op=translate&text=${encodeURIComponent(texto)}" target="_blank" rel="noopener">Traduzir para o português ↗</a>
+      </details>`;
+    } catch {
+      html = navigator.onLine
+        ? '<p class="mudo peq-txt">Este exercício não tem passo a passo escrito — veja o vídeo acima.</p>'
+        : '<p class="mudo peq-txt">Passo a passo indisponível sem internet.</p>';
+    }
   }
   const alvo = document.getElementById('instrucoes');
   if (alvo && decodeURIComponent(rota().partes[1] || '') === e.id) alvo.innerHTML = html;
@@ -836,7 +848,7 @@ function render() {
     return;
   }
   ctx = v.ctx || {};
-  document.title = `${v.titulo} · Meu Treino`;
+  document.title = `${v.titulo} · OASIS`;
   $('#titulo').textContent = v.titulo;
   const bv = $('#voltar');
   bv.hidden = !v.voltar;
