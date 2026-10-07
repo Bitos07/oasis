@@ -1,5 +1,5 @@
 import { carregar, salvar, padrao, exportarJSON, importarJSON, dataISO, uid } from './storage.js';
-import { EXERCICIOS, MUSCULOS, GRUPOS, EQUIPAMENTOS } from './data/exercicios.js';
+import { EXERCICIOS, MUSCULOS, GRUPOS, EQUIPAMENTOS, CATEGORIAS, NIVEIS, fotoURL, instrucoesURL } from './data/exercicios.js';
 import { MODELOS } from './data/modelos.js';
 import { corpoSVG } from './components/corpo.js';
 import { graficoSVG } from './components/grafico.js';
@@ -13,7 +13,7 @@ const DESCANSOS = [30, 45, 60, 90, 120, 180, 240];
 const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 const SEMANA = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
 
-const filtroCat = { q: '', musculo: '', equip: '' };
+const filtroCat = { q: '', musculo: '', equip: '', cat: '', limite: 60 };
 let novoEx = null;         // rascunho do exercício personalizado
 let diaSelHist = null;     // dia tocado no calendário
 let promptInstalar = null; // evento beforeinstallprompt
@@ -67,12 +67,32 @@ function toast(msg) {
 
 // ---------------------------------------------------------------- exercícios
 
+let cacheEx = { lista: null, mapa: null, pers: null };
 function todosExercicios() {
-  return [...EXERCICIOS, ...db.exerciciosPersonalizados];
+  if (cacheEx.pers !== db.exerciciosPersonalizados || cacheEx.n !== db.exerciciosPersonalizados.length) {
+    const lista = [...EXERCICIOS, ...db.exerciciosPersonalizados];
+    cacheEx = { lista, mapa: new Map(lista.map((e) => [e.id, e])), pers: db.exerciciosPersonalizados, n: db.exerciciosPersonalizados.length };
+  }
+  return cacheEx.lista;
 }
 function exPorId(id) {
-  return todosExercicios().find((e) => e.id === id) ||
+  todosExercicios();
+  return cacheEx.mapa.get(id) ||
     { id, nome: '(exercício removido)', principais: [], secundarios: [], grupo: '', equipamento: '', dica: '', tipo: 'forca' };
+}
+// Miniatura (1ª foto) e prévia animada (alterna posição inicial e final).
+function miniatura(e, cls = 'mini') {
+  const url = fotoURL(e, 0);
+  return url ? `<img class="${cls}" src="${url}" alt="" loading="lazy" decoding="async">` : `<span class="${cls} sem-foto">🏋️</span>`;
+}
+function previa(e) {
+  if (!e.fotos) return '<div class="previa sem-foto">Sem foto para este exercício</div>';
+  const b = e.fotos > 1 ? `<img class="b" src="${fotoURL(e, 1)}" alt="Posição final">` : '';
+  return `<button class="previa ${e.fotos > 1 ? 'anima' : ''}" data-a="pausar-previa" aria-label="Pausar ou continuar a animação">
+    <img src="${fotoURL(e, 0)}" alt="Posição inicial">${b}<span class="previa-dica">toque para pausar</span></button>`;
+}
+function linkVideo(e) {
+  return `https://www.youtube.com/results?search_query=${encodeURIComponent(`${e.nome} execução correta`)}`;
 }
 function chipsMusculos(e, pequeno = false) {
   const cls = pequeno ? ' peq' : '';
@@ -88,8 +108,12 @@ function musculosDe(listaIds) {
   });
   return { principais: [...p], secundarios: [...s].filter((m) => !p.has(m)) };
 }
+// Cardio e alongamento não têm carga: registra-se só tempo.
 function ehCardio(e) {
-  return e.tipo === 'cardio';
+  return e.tipo === 'cardio' || e.tipo === 'alongamento';
+}
+function unidade(e) {
+  return e.tipo === 'cardio' ? 'min' : e.tipo === 'alongamento' ? 'seg' : 'reps';
 }
 
 // ---------------------------------------------------------------- água e peso
@@ -159,10 +183,10 @@ function comecarTreino(planoId, idx) {
   gravar();
   ir('#/treino');
 }
-function textoUltimaVez(exId, cardio) {
+function textoUltimaVez(exId, cardio, un = 'min') {
   const u = ultimaVez(exId);
   if (!u) return '';
-  const series = u.series.map((s) => (cardio ? `${s.reps} min` : `${fmtNum(s.kg)}×${s.reps}`)).join(' · ');
+  const series = u.series.map((s) => (cardio ? `${s.reps} ${un}` : `${fmtNum(s.kg)}×${s.reps}`)).join(' · ');
   return `<p class="ultima">Última vez (${fmtData(u.data)}): ${series}</p>`;
 }
 // Valor sugerido (cinza) de uma série: o da última vez; se não houver, o da série anterior de hoje.
@@ -354,7 +378,7 @@ function viewDia([, planoId, idxStr]) {
     const e = exPorId(it.exId);
     return `<section class="card ex-edit">
       <div class="ex-cab">
-        <span class="ordem">${i + 1}</span>
+        <span class="ordem">${i + 1}</span><button class="mini-btn" data-a="ver-previa" data-id="${esc(e.id)}" aria-label="Ver como fazer">${miniatura(e)}</button>
         <a href="#/exercicio/${encodeURIComponent(e.id)}" class="ex-nome">${esc(e.nome)}</a>
         <div class="mini-btns">
           <button class="ico" data-a="ex-mover" data-i="${i}" data-d="-1" ${i === 0 ? 'disabled' : ''} aria-label="Subir">↑</button>
@@ -365,7 +389,7 @@ function viewDia([, planoId, idxStr]) {
       <div class="chips">${chipsMusculos(e, true)}</div>
       <div class="ex-campos">
         <label>Séries<input type="number" min="1" max="12" inputmode="numeric" data-c="ex-campo" data-k="series" data-i="${i}" value="${esc(it.series)}"></label>
-        <label>${ehCardio(e) ? 'Minutos' : 'Repetições'}<input data-c="ex-campo" data-k="reps" data-i="${i}" value="${esc(it.reps)}" placeholder="10-12"></label>
+        <label>${{ min: 'Minutos', seg: 'Segundos', reps: 'Repetições' }[unidade(e)]}<input data-c="ex-campo" data-k="reps" data-i="${i}" value="${esc(it.reps)}" placeholder="10-12"></label>
         <label>Descanso<select data-c="ex-campo" data-k="descansoSeg" data-i="${i}">
           ${DESCANSOS.map((s) => `<option value="${s}" ${Number(it.descansoSeg) === s ? 'selected' : ''}>${s < 60 ? s + ' s' : (s / 60).toString().replace('.', ',') + ' min'}</option>`).join('')}
         </select></label>
@@ -402,34 +426,42 @@ function modoCatalogo(params) {
 function listaCatalogo(modo) {
   const q = semAcento(filtroCat.q.trim());
   const m = filtroCat.musculo;
-  let itens = todosExercicios().filter((e) =>
-    (!q || semAcento(e.nome).includes(q)) &&
+  const itens = todosExercicios().filter((e) =>
+    (!q || semAcento(e.nome).includes(q) || (e.img && e.img.toLowerCase().replace(/_/g, ' ').includes(q))) &&
     (!filtroCat.equip || e.equipamento === filtroCat.equip) &&
-    (!m || (m === 'cardio' ? e.grupo === 'cardio' : e.principais.includes(m) || e.secundarios.includes(m)))
+    (!filtroCat.cat || (e.categoria || 'musculacao') === filtroCat.cat) &&
+    (!m || (m === 'cardio' || m === 'alongamento' ? e.grupo === m : e.principais.includes(m) || e.secundarios.includes(m)))
   );
+  if (!itens.length) return '<p class="vazio">Nada encontrado.</p>';
   const jaNoDia = modo.tipo === 'dia' ? new Set(modo.dia.exercicios.map((x) => x.exId)) : new Set();
   const item = (e) => `<button class="item-ex ${jaNoDia.has(e.id) ? 'ja' : ''}" data-a="cat-item" data-id="${esc(e.id)}">
-      <div class="item-ex-txt"><b>${esc(e.nome)}</b><span class="mudo peq-txt">${esc(EQUIPAMENTOS[e.equipamento] || '')}${e.personalizado ? ' · personalizado' : ''}</span>
+      ${miniatura(e)}
+      <div class="item-ex-txt"><b>${esc(e.nome)}</b><span class="mudo peq-txt">${esc(EQUIPAMENTOS[e.equipamento] || '')}${e.personalizado ? ' · personalizado' : ''}${e.categoria && e.categoria !== 'musculacao' ? ` · ${esc(CATEGORIAS[e.categoria])}` : ''}</span>
       <div class="chips">${chipsMusculos(e, true)}</div></div>
       <span class="item-ex-acao">${modo.tipo === 'ver' ? '›' : jaNoDia.has(e.id) ? '✓' : '+'}</span>
     </button>`;
-  if (!itens.length) return '<p class="vazio">Nada encontrado.</p>';
 
-  if (m && m !== 'cardio') {
-    const prin = itens.filter((e) => e.principais.includes(m));
-    const sec = itens.filter((e) => !e.principais.includes(m));
-    return `${prin.length ? `<h3 class="secao">Trabalham ${esc(MUSCULOS[m])} como principal (${prin.length})</h3>${prin.map(item).join('')}` : ''}
-      ${sec.length ? `<h3 class="secao">Também usam ${esc(MUSCULOS[m])} (secundário) (${sec.length})</h3>${sec.map(item).join('')}` : ''}`;
-  }
-  const ordem = Object.keys(GRUPOS);
-  itens = itens.sort((a, b) => ordem.indexOf(a.grupo) - ordem.indexOf(b.grupo));
-  let html = '', grupoAtual = null;
-  for (const e of itens) {
-    if (e.grupo !== grupoAtual) {
-      grupoAtual = e.grupo;
-      html += `<h3 class="secao">${esc(GRUPOS[e.grupo] || e.grupo)}</h3>`;
+  // Ordem: por grupo (ou principal/secundário quando filtra músculo), curados primeiro, depois alfabético.
+  const porMusculo = m && m !== 'cardio' && m !== 'alongamento';
+  const ordemGrupo = Object.keys(GRUPOS);
+  const chave = (e) => (porMusculo ? (e.principais.includes(m) ? 0 : 1) : ordemGrupo.indexOf(e.grupo));
+  itens.sort((a, b) => chave(a) - chave(b) || (b.curado ? 1 : 0) - (a.curado ? 1 : 0) || (a.curado ? 0 : a.nome.localeCompare(b.nome, 'pt')));
+  const titulo = (e) => (porMusculo
+    ? (e.principais.includes(m) ? `Trabalham ${MUSCULOS[m]} como principal` : `Também usam ${MUSCULOS[m]} (secundário)`)
+    : GRUPOS[e.grupo] || e.grupo);
+
+  let html = `<p class="mudo peq-txt">${itens.length} exercício${itens.length === 1 ? '' : 's'}</p>`;
+  let atual = null;
+  for (const e of itens.slice(0, filtroCat.limite)) {
+    const t = titulo(e);
+    if (t !== atual) {
+      atual = t;
+      html += `<h3 class="secao">${esc(t)}</h3>`;
     }
     html += item(e);
+  }
+  if (itens.length > filtroCat.limite) {
+    html += `<button class="btn largo" data-a="cat-mais">Mostrar mais (${itens.length - filtroCat.limite} restantes)</button>`;
   }
   return html;
 }
@@ -456,8 +488,13 @@ function viewCatalogo(_, params) {
     html: `${banner}
       <div class="busca-linha">
         <input id="busca" type="search" data-c="busca" placeholder="Buscar exercício…" value="${esc(filtroCat.q)}" autocomplete="off">
+      </div>
+      <div class="filtros-linha">
         <select data-c="equip-filtro" aria-label="Equipamento"><option value="">Todo equipamento</option>
           ${Object.entries(EQUIPAMENTOS).map(([k, v]) => `<option value="${k}" ${filtroCat.equip === k ? 'selected' : ''}>${esc(v)}</option>`).join('')}
+        </select>
+        <select data-c="cat-filtro" aria-label="Tipo de exercício"><option value="">Todos os tipos</option>
+          ${Object.entries(CATEGORIAS).map(([k, v]) => `<option value="${k}" ${filtroCat.cat === k ? 'selected' : ''}>${esc(v)}</option>`).join('')}
         </select>
       </div>
       <div class="chips rolar">
@@ -492,18 +529,49 @@ function viewExercicio([, idEnc]) {
     titulo: e.nome, aba: 'catalogo', voltar: '#/catalogo',
     html: `
       <section class="card">
+        ${previa(e)}
+        <a class="btn largo video" href="${linkVideo(e)}" target="_blank" rel="noopener">▶ Ver vídeo de como fazer (YouTube)</a>
+      </section>
+      <section class="card">
         ${corpoSVG(e.principais, e.secundarios)}
         <p class="rotulo">Músculo principal</p><div class="chips">${e.principais.map((m) => `<span class="chip prin">${esc(MUSCULOS[m])}</span>`).join('')}</div>
         ${e.secundarios.length ? `<p class="rotulo">Secundários (ajudam)</p><div class="chips">${e.secundarios.map((m) => `<span class="chip sec">${esc(MUSCULOS[m])}</span>`).join('')}</div>` : ''}
-        <p class="rotulo">Equipamento</p><p>${esc(EQUIPAMENTOS[e.equipamento] || '—')}</p>
-        ${e.dica ? `<p class="rotulo">Como fazer</p><p>${esc(e.dica)}</p>` : ''}
+        <div class="info-linha">
+          <div><p class="rotulo">Equipamento</p><p>${esc(EQUIPAMENTOS[e.equipamento] || '—')}</p></div>
+          <div><p class="rotulo">Tipo</p><p>${esc(CATEGORIAS[e.categoria] || 'Musculação')}</p></div>
+          ${e.nivel ? `<div><p class="rotulo">Nível</p><p>${esc(NIVEIS[e.nivel])}</p></div>` : ''}
+        </div>
+        ${e.dica ? `<p class="rotulo">Dica</p><p>${esc(e.dica)}</p>` : ''}
+        ${instrucoesURL(e) ? '<div id="instrucoes"><p class="mudo peq-txt">Carregando passo a passo…</p></div>' : ''}
       </section>
       ${usos.length ? `<section class="card"><p class="rotulo">Está nos seus treinos</p><ul class="lista-dias">${usos.map((u) => `<li>${u}</li>`).join('')}</ul></section>` : ''}
       ${logs.length ? `<section class="card">${recorde}<p class="mudo">Feito em ${logs.length} treino${logs.length === 1 ? '' : 's'}.</p>
         <a class="btn largo" href="#/evolucao/${encodeURIComponent(id)}">📈 Ver evolução</a></section>` : ''}
       <button class="btn prim largo" data-a="sheet-add-ex" data-id="${esc(id)}">+ Adicionar a um treino</button>
       ${e.personalizado ? `<button class="btn perigo largo" data-a="excluir-exercicio" data-id="${esc(id)}">Excluir exercício personalizado</button>` : ''}`,
+    depois: () => carregarInstrucoes(e),
   };
+}
+
+// Passo a passo vem da base aberta (em inglês), com atalho para traduzir.
+async function carregarInstrucoes(e) {
+  const url = instrucoesURL(e);
+  if (!url) return;
+  let html;
+  try {
+    const dados = await (await fetch(url)).json();
+    const passos = dados.instructions || [];
+    if (!passos.length) throw new Error('vazio');
+    const texto = passos.map((p, i) => `${i + 1}. ${p}`).join('\n');
+    html = `<details class="passos"><summary>Passo a passo detalhado (em inglês)</summary>
+      <ol>${passos.map((p) => `<li>${esc(p)}</li>`).join('')}</ol>
+      <a class="link" href="https://translate.google.com/?sl=en&tl=pt&op=translate&text=${encodeURIComponent(texto)}" target="_blank" rel="noopener">Traduzir para o português ↗</a>
+    </details>`;
+  } catch {
+    html = '<p class="mudo peq-txt">Passo a passo indisponível sem internet.</p>';
+  }
+  const alvo = document.getElementById('instrucoes');
+  if (alvo && decodeURIComponent(rota().partes[1] || '') === e.id) alvo.innerHTML = html;
 }
 
 function viewNovoExercicio() {
@@ -537,16 +605,16 @@ function viewTreino() {
       <div class="serie ${s.feita ? 'ok' : ''}">
         <span class="n">${j + 1}</span>
         ${cardio ? '' : `<label class="campo"><input data-c="serie" data-i="${i}" data-j="${j}" data-k="kg" inputmode="decimal" value="${esc(s.kg)}" placeholder="${esc(ph.kg || '0')}"><span>kg</span></label>`}
-        <label class="campo"><input data-c="serie" data-i="${i}" data-j="${j}" data-k="reps" inputmode="numeric" value="${esc(s.reps)}" placeholder="${esc(ph.reps)}"><span>${cardio ? 'min' : 'reps'}</span></label>
+        <label class="campo"><input data-c="serie" data-i="${i}" data-j="${j}" data-k="reps" inputmode="numeric" value="${esc(s.reps)}" placeholder="${esc(ph.reps)}"><span>${unidade(e)}</span></label>
         <button class="check" data-a="serie-ok" data-i="${i}" data-j="${j}" aria-label="Marcar série feita">✓</button>
       </div>`;
     }).join('');
     return `<section class="card treino-ex ${feitas === it.series.length ? 'completo' : ''}">
-      <div class="ex-cab"><span class="ordem">${i + 1}</span><a class="ex-nome" href="#/exercicio/${encodeURIComponent(e.id)}">${esc(e.nome)}</a>
+      <div class="ex-cab"><span class="ordem">${i + 1}</span><button class="mini-btn" data-a="ver-previa" data-id="${esc(e.id)}" aria-label="Ver como fazer">${miniatura(e)}</button><a class="ex-nome" href="#/exercicio/${encodeURIComponent(e.id)}">${esc(e.nome)}</a>
         <span class="mudo peq-txt">${feitas}/${it.series.length}</span></div>
       <div class="chips">${chipsMusculos(e, true)}</div>
       <p class="mudo peq-txt">Meta: ${it.alvoSeries} × ${esc(it.alvoReps)}${it.descansoSeg ? ` · descanso ${it.descansoSeg < 60 ? it.descansoSeg + ' s' : fmtNum(it.descansoSeg / 60) + ' min'}` : ''}${it.obs ? ` · ${esc(it.obs)}` : ''}</p>
-      ${textoUltimaVez(it.exId, cardio)}
+      ${textoUltimaVez(it.exId, cardio, unidade(e))}
       <div class="series">${series}</div>
       <div class="mini-acoes">
         <button class="link" data-a="serie-add" data-i="${i}">+ série</button>
@@ -582,7 +650,7 @@ function viewSessao([, id]) {
     return `<a class="card sessao-ex" href="#/evolucao/${encodeURIComponent(it.exId)}">
       <b>${esc(e.nome)}</b>
       <div class="chips">${chipsMusculos(e, true)}</div>
-      <p>${it.series.map((sr) => (cardio ? `${sr.reps} min` : `${fmtNum(sr.kg)} kg × ${sr.reps}`)).join(' · ')}</p>
+      <p>${it.series.map((sr) => (cardio ? `${sr.reps} ${unidade(e)}` : `${fmtNum(sr.kg)} kg × ${sr.reps}`)).join(' · ')}</p>
     </a>`;
   }).join('');
   const mus = musculosDe(s.itens.map((it) => it.exId));
@@ -676,14 +744,14 @@ function viewEvolucao([, idEnc]) {
   const semCarga = regs.every((r) => r.series.every((sr) => !sr.kg));
   let graficos;
   if (cardio) {
-    graficos = `<p class="rotulo">Minutos por treino</p>${graficoSVG(regs.map((r) => ({ data: r.s.data, y: r.series.reduce((a, sr) => a + sr.reps, 0) })), { unidade: 'min' })}`;
+    graficos = `<p class="rotulo">Tempo por treino (${unidade(e)})</p>${graficoSVG(regs.map((r) => ({ data: r.s.data, y: r.series.reduce((a, sr) => a + sr.reps, 0) })), { unidade: unidade(e) })}`;
   } else if (semCarga) {
     graficos = `<p class="rotulo">Máximo de repetições numa série</p>${graficoSVG(regs.map((r) => ({ data: r.s.data, y: Math.max(...r.series.map((sr) => sr.reps)) })), { unidade: 'reps' })}`;
   } else {
     graficos = `<p class="rotulo">Maior carga do dia</p>${graficoSVG(regs.map((r) => ({ data: r.s.data, y: Math.max(...r.series.map((sr) => sr.kg)) })), { unidade: 'kg' })}
       <p class="rotulo">Força estimada (1RM = carga × (1 + reps/30))</p>${graficoSVG(regs.map((r) => ({ data: r.s.data, y: Math.round(Math.max(...r.series.map((sr) => e1rm(sr.kg, sr.reps)))) })), { unidade: 'kg', classe: 'serie-2' })}`;
   }
-  const tabela = [...regs].reverse().map((r) => `<tr><td>${fmtData(r.s.data)}</td><td>${r.series.map((sr) => (cardio ? `${sr.reps} min` : `${fmtNum(sr.kg)}×${sr.reps}`)).join(' · ')}</td></tr>`).join('');
+  const tabela = [...regs].reverse().map((r) => `<tr><td>${fmtData(r.s.data)}</td><td>${r.series.map((sr) => (cardio ? `${sr.reps} ${unidade(e)}` : `${fmtNum(sr.kg)}×${sr.reps}`)).join(' · ')}</td></tr>`).join('');
   return {
     titulo: e.nome, aba: 'historico', voltar: '#/historico',
     html: `<section class="card"><div class="chips">${chipsMusculos(e, true)}</div>${graficos}</section>
@@ -782,6 +850,7 @@ function render() {
   } else {
     banner.hidden = true;
   }
+  v.depois?.();
 }
 
 // ---------------------------------------------------------------- sheet
@@ -889,8 +958,21 @@ const ACOES = {
     commit();
   },
 
+  'cat-mais': () => {
+    filtroCat.limite += 60;
+    $('#lista-cat').innerHTML = listaCatalogo(ctx.modo);
+  },
+  'pausar-previa': (el) => el.classList.toggle('pausada'),
+  'ver-previa': (el) => {
+    const e = exPorId(el.dataset.id);
+    abrirSheet(`<p class="sheet-plano">${esc(e.nome)}</p>${previa(e)}
+      <div class="chips">${chipsMusculos(e, true)}</div>
+      ${e.dica ? `<p class="peq-txt">${esc(e.dica)}</p>` : ''}
+      <a class="btn largo video" href="${linkVideo(e)}" target="_blank" rel="noopener">▶ Ver vídeo (YouTube)</a>`);
+  },
   'filtro-musc': (el) => {
     filtroCat.musculo = el.dataset.m;
+    filtroCat.limite = 60;
     document.querySelectorAll('[data-a="filtro-musc"]').forEach((b) => b.classList.toggle('on', b === el));
     $('#lista-cat').innerHTML = listaCatalogo(ctx.modo);
   },
@@ -898,7 +980,7 @@ const ACOES = {
     const id = el.dataset.id;
     const modo = ctx.modo;
     if (modo.tipo === 'dia') {
-      modo.dia.exercicios.push({ exId: id, series: 3, reps: ehCardio(exPorId(id)) ? '20' : '10-12', descansoSeg: 60, obs: '' });
+      modo.dia.exercicios.push({ exId: id, series: 3, reps: { cardio: '20', alongamento: '30' }[exPorId(id).tipo] || '10-12', descansoSeg: 60, obs: '' });
       gravar();
       toast(`✓ ${exPorId(id).nome} adicionado`);
       render();
@@ -1094,10 +1176,17 @@ function atualizarPesoAtual() {
 const CAMPOS = {
   busca: (el) => {
     filtroCat.q = el.value;
+    filtroCat.limite = 60;
     $('#lista-cat').innerHTML = listaCatalogo(ctx.modo);
   },
   'equip-filtro': (el) => {
     filtroCat.equip = el.value;
+    filtroCat.limite = 60;
+    $('#lista-cat').innerHTML = listaCatalogo(ctx.modo);
+  },
+  'cat-filtro': (el) => {
+    filtroCat.cat = el.value;
+    filtroCat.limite = 60;
     $('#lista-cat').innerHTML = listaCatalogo(ctx.modo);
   },
   'plano-nome': (el) => {
@@ -1178,7 +1267,12 @@ window.addEventListener('hashchange', () => {
   window.scrollTo(0, 0);
 });
 
-// muda o dia à meia-noite / atualiza cronômetro do treino
+// prévia do exercício: alterna posição inicial e final
+setInterval(() => {
+  document.querySelectorAll('.previa.anima:not(.pausada)').forEach((p) => p.classList.toggle('fim'));
+}, 1200);
+
+// atualiza cronômetro do treino
 setInterval(() => {
   const c = $('#cronometro');
   if (c && db.treinoAtual) c.textContent = `${Math.floor((Date.now() - db.treinoAtual.inicio) / 60000)} min`;

@@ -1,6 +1,9 @@
 // Catálogo de exercícios.
 // principais = músculos que o exercício trabalha mais; secundarios = que ajudam.
 // Os ids de músculo batem com as regiões do desenho em components/corpo.js.
+// CURADOS = exercícios com dica em português; o resto vem da base aberta (data/base.js).
+
+import { BASE, COMMIT_BASE } from './base.js';
 
 export const MUSCULOS = {
   peito: 'Peito',
@@ -18,12 +21,25 @@ export const MUSCULOS = {
   gluteos: 'Glúteos',
   adutores: 'Adutores',
   panturrilha: 'Panturrilha',
+  pescoco: 'Pescoço',
 };
 
 export const GRUPOS = {
   ...MUSCULOS,
   cardio: 'Cardio',
+  alongamento: 'Alongamento e mobilidade',
 };
+
+export const CATEGORIAS = {
+  musculacao: 'Musculação',
+  alongamento: 'Alongamento',
+  cardio: 'Cardio',
+  pliometria: 'Pliometria (saltos)',
+  olimpico: 'Levantamento olímpico',
+  strongman: 'Strongman',
+};
+
+export const NIVEIS = { 1: 'Iniciante', 2: 'Intermediário', 3: 'Avançado' };
 
 export const EQUIPAMENTOS = {
   barra: 'Barra',
@@ -33,14 +49,19 @@ export const EQUIPAMENTOS = {
   corporal: 'Peso corporal',
   smith: 'Smith',
   kettlebell: 'Kettlebell',
+  elastico: 'Elástico',
+  medicineball: 'Medicine ball',
+  bola: 'Bola suíça',
+  rolo: 'Rolo de liberação',
   cardio: 'Aparelho de cardio',
+  outro: 'Outros',
 };
 
 function ex(id, nome, principais, secundarios, equipamento, dica, extra = {}) {
   return { id, nome, grupo: extra.grupo || principais[0], principais, secundarios, equipamento, dica, tipo: extra.tipo || 'forca' };
 }
 
-export const EXERCICIOS = [
+const CURADOS = [
   // ---------- PEITO ----------
   ex('supino-reto-barra', 'Supino reto com barra', ['peito'], ['triceps', 'ombros'], 'barra', 'Escápulas encaixadas no banco; desça a barra até a linha do mamilo e empurre sem tirar o quadril do banco.'),
   ex('supino-reto-halter', 'Supino reto com halteres', ['peito'], ['triceps', 'ombros'], 'halter', 'Desça os halteres até a lateral do peito, cotovelos a ~45° do tronco.'),
@@ -173,3 +194,71 @@ export const EXERCICIOS = [
   ex('escada', 'Escada (simulador)', ['quadriceps', 'gluteos'], ['panturrilha'], 'cardio', 'Anote os minutos.', { grupo: 'cardio', tipo: 'cardio' }),
   ex('pular-corda', 'Pular corda', ['panturrilha'], ['quadriceps', 'ombros'], 'corporal', 'Anote os minutos.', { grupo: 'cardio', tipo: 'cardio' }),
 ];
+
+// Foto (id no free-exercise-db) de cada exercício curado.
+const FOTO = {
+  'supino-reto-barra': 'Barbell_Bench_Press_-_Medium_Grip', 'supino-reto-halter': 'Dumbbell_Bench_Press',
+  'supino-inclinado-barra': 'Barbell_Incline_Bench_Press_-_Medium_Grip', 'supino-inclinado-halter': 'Incline_Dumbbell_Press',
+  'supino-declinado-barra': 'Decline_Barbell_Bench_Press', 'supino-maquina': 'Machine_Bench_Press', 'supino-smith': 'Smith_Machine_Bench_Press',
+  'crucifixo-halter': 'Dumbbell_Flyes', 'crucifixo-inclinado': 'Incline_Dumbbell_Flyes', 'crossover': 'Cable_Crossover',
+  'crossover-baixo': 'Low_Cable_Crossover', 'peck-deck': 'Butterfly', 'flexao': 'Pushups', 'paralelas-peito': 'Dips_-_Chest_Version',
+  'pullover': 'Straight-Arm_Dumbbell_Pullover',
+  'puxada-frente': 'Wide-Grip_Lat_Pulldown', 'puxada-triangulo': 'V-Bar_Pulldown', 'puxada-supinada': 'Underhand_Cable_Pulldowns',
+  'barra-fixa': 'Pullups', 'barra-fixa-supinada': 'Chin-Up', 'remada-curvada': 'Bent_Over_Barbell_Row', 'remada-baixa': 'Seated_Cable_Rows',
+  'remada-unilateral': 'One-Arm_Dumbbell_Row', 'remada-cavalinho': 'T-Bar_Row_with_Handle', 'remada-maquina': 'Leverage_Iso_Row',
+  'pulldown': 'Straight-Arm_Pulldown', 'levantamento-terra': 'Barbell_Deadlift', 'hiperextensao': 'Hyperextensions_Back_Extensions',
+  'bom-dia': 'Good_Morning',
+  'desenvolvimento-halter': 'Seated_Dumbbell_Press', 'desenvolvimento-barra': 'Standing_Military_Press',
+  'desenvolvimento-maquina': 'Machine_Shoulder_Military_Press', 'arnold': 'Arnold_Dumbbell_Press', 'elevacao-lateral': 'Side_Lateral_Raise',
+  'elevacao-lateral-polia': 'Standing_Low-Pulley_Deltoid_Raise', 'elevacao-frontal': 'Front_Dumbbell_Raise',
+  'crucifixo-inverso': 'Seated_Bent-Over_Rear_Delt_Raise', 'crucifixo-inverso-maquina': 'Reverse_Machine_Flyes', 'face-pull': 'Face_Pull',
+  'remada-alta': 'Upright_Barbell_Row', 'encolhimento-barra': 'Barbell_Shrug', 'encolhimento-halter': 'Dumbbell_Shrug',
+  'rosca-direta': 'Barbell_Curl', 'rosca-w': 'EZ-Bar_Curl', 'rosca-alternada': 'Dumbbell_Alternate_Bicep_Curl', 'rosca-martelo': 'Hammer_Curls',
+  'rosca-scott': 'Preacher_Curl', 'rosca-concentrada': 'Concentration_Curls', 'rosca-polia': 'Standing_Biceps_Cable_Curl',
+  'rosca-inclinada': 'Incline_Dumbbell_Curl',
+  'triceps-pulley': 'Triceps_Pushdown', 'triceps-corda': 'Triceps_Pushdown_-_Rope_Attachment', 'triceps-testa': 'EZ-Bar_Skullcrusher',
+  'triceps-frances': 'Standing_Dumbbell_Triceps_Extension', 'triceps-coice': 'Tricep_Dumbbell_Kickback',
+  'triceps-unilateral': 'Cable_One_Arm_Tricep_Extension', 'mergulho-banco': 'Bench_Dips', 'paralelas-triceps': 'Dips_-_Triceps_Version',
+  'supino-fechado': 'Close-Grip_Barbell_Bench_Press',
+  'rosca-inversa': 'Reverse_Barbell_Curl', 'rosca-punho': 'Palms-Up_Barbell_Wrist_Curl_Over_A_Bench',
+  'rosca-punho-inversa': 'Palms-Down_Wrist_Curl_Over_A_Bench', 'farmer-walk': 'Farmers_Walk',
+  'agachamento-livre': 'Barbell_Squat', 'agachamento-smith': 'Smith_Machine_Squat', 'agachamento-frontal': 'Front_Barbell_Squat',
+  'agachamento-goblet': 'Goblet_Squat', 'agachamento-sumo': 'Plie_Dumbbell_Squat', 'hack': 'Hack_Squat', 'leg-press-45': 'Leg_Press',
+  'cadeira-extensora': 'Leg_Extensions', 'afundo': 'Dumbbell_Lunges', 'passada': 'Bodyweight_Walking_Lunge',
+  'bulgaro': 'Split_Squat_with_Dumbbells', 'step-up': 'Dumbbell_Step_Ups',
+  'mesa-flexora': 'Lying_Leg_Curls', 'cadeira-flexora': 'Seated_Leg_Curl', 'flexora-em-pe': 'Standing_Leg_Curl',
+  'stiff': 'Stiff-Legged_Barbell_Deadlift', 'terra-romeno': 'Romanian_Deadlift',
+  'elevacao-pelvica': 'Barbell_Hip_Thrust', 'ponte-gluteo': 'Butt_Lift_Bridge', 'gluteo-polia': 'One-Legged_Cable_Kickback',
+  'gluteo-4-apoios': 'Glute_Kickback', 'cadeira-abdutora': 'Thigh_Abductor', 'cadeira-adutora': 'Thigh_Adductor',
+  'panturrilha-em-pe': 'Standing_Calf_Raises', 'panturrilha-sentado': 'Seated_Calf_Raise',
+  'panturrilha-leg': 'Calf_Press_On_The_Leg_Press_Machine', 'panturrilha-unilateral': 'Standing_Dumbbell_Calf_Raise',
+  'abdominal-supra': 'Crunches', 'abdominal-infra': 'Flat_Bench_Lying_Leg_Raise', 'elevacao-pernas-barra': 'Hanging_Leg_Raise',
+  'prancha': 'Plank', 'prancha-lateral': 'Side_Bridge', 'abdominal-bicicleta': 'Air_Bike', 'russian-twist': 'Russian_Twist',
+  'abdominal-polia': 'Cable_Crunch', 'abdominal-maquina': 'Ab_Crunch_Machine', 'roda-abdominal': 'Ab_Roller',
+  'esteira': 'Running_Treadmill', 'bicicleta': 'Bicycling_Stationary', 'eliptico': 'Elliptical_Trainer', 'escada': 'Stairmaster',
+  'pular-corda': 'Rope_Jumping',
+};
+
+for (const e of CURADOS) {
+  e.img = FOTO[e.id] || null;
+  e.fotos = e.img ? 2 : 0;
+  e.categoria = e.tipo === 'cardio' ? 'cardio' : 'musculacao';
+  e.curado = true;
+}
+
+const jaCurados = new Set(Object.values(FOTO));
+const DA_BASE = BASE.filter((b) => !jaCurados.has(b[0])).map(([id, nome, categoria, principais, secundarios, equipamento, nivel, fotos]) => ({
+  id, nome, principais, secundarios, equipamento, categoria, nivel, fotos, img: fotos ? id : null, dica: '',
+  grupo: categoria === 'alongamento' || categoria === 'cardio' ? categoria : principais[0] || 'abdomen',
+  tipo: categoria === 'cardio' || categoria === 'alongamento' ? categoria : 'forca',
+}));
+
+export const EXERCICIOS = [...CURADOS, ...DA_BASE];
+
+const RAIZ_FOTOS = `https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@${COMMIT_BASE}/exercises`;
+export function fotoURL(e, i = 0) {
+  return e.img ? `${RAIZ_FOTOS}/${e.img}/${i}.jpg` : null;
+}
+export function instrucoesURL(e) {
+  return e.img ? `${RAIZ_FOTOS}/${e.img}.json` : null;
+}

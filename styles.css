@@ -183,8 +183,9 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--acc); outli
 .dia7.hoje { outline: 2px solid var(--txt); outline-offset: -2px; }
 
 /* ---------- catálogo ---------- */
-.busca-linha { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
-.busca-linha select { width: auto; max-width: 42vw; }
+.busca-linha { display: grid; grid-template-columns: 1fr; }
+.filtros-linha { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.filtros-linha select { min-height: 42px; padding: 8px 10px; font-size: 15px; }
 .item-ex {
   display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
   background: var(--card); border: 0; border-radius: 14px; padding: 12px 14px; cursor: pointer;
@@ -299,3 +300,26 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--acc); outli
 @media (min-width: 700px) {
   #topo { justify-content: center; }
 }
+
+/* ---------- fotos e prévia do exercício ---------- */
+.mini { flex: none; width: 64px; height: 48px; border-radius: 10px; object-fit: cover; background: var(--card2); }
+.mini.sem-foto { display: grid; place-items: center; font-size: 1.3rem; }
+.mini-btn { flex: none; padding: 0; border: 0; background: none; cursor: pointer; border-radius: 10px; line-height: 0; }
+.mini-btn .mini { width: 52px; height: 40px; }
+.previa {
+  position: relative; display: block; width: 100%; aspect-ratio: 3 / 2; padding: 0; border: 0; cursor: pointer;
+  border-radius: 12px; overflow: hidden; background: var(--card2);
+}
+.previa img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.previa img.b { opacity: 0; transition: opacity .3s; }
+.previa.fim img.b { opacity: 1; }
+.previa-dica {
+  position: absolute; right: 8px; bottom: 8px; background: rgba(0,0,0,.55); color: #fff;
+  font-size: 0.72rem; padding: 3px 8px; border-radius: 999px;
+}
+.previa.pausada .previa-dica::after { content: ' (pausado)'; }
+.previa.sem-foto { display: grid; place-items: center; color: var(--mudo); font-size: 0.9rem; aspect-ratio: 3 / 1; }
+.btn.video { color: #ff4d4d; }
+.info-linha { display: flex; flex-wrap: wrap; gap: 8px 24px; }
+.passos summary { cursor: pointer; font-weight: 700; color: var(--acc); padding: 4px 0; }
+.passos ol { margin: 8px 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; font-size: 0.92rem; }

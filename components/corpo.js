@@ -4,7 +4,7 @@
 
 const FRENTE = [
   // [músculo ou null para parte neutra, forma SVG]
-  [null, '<rect x="92" y="46" width="8" height="14"/>'],
+  ['pescoco', '<rect x="92" y="46" width="8" height="14"/>'],
   [null, '<path d="M78,160 L100,166 L100,188 L92,186 L80,174 Z"/>'],
   [null, '<ellipse cx="50" cy="190" rx="7" ry="10"/>'],
   [null, '<ellipse cx="84" cy="262" rx="10" ry="8"/>'],
@@ -22,7 +22,7 @@ const FRENTE = [
 ];
 
 const COSTAS = [
-  [null, '<rect x="92" y="46" width="8" height="10"/>'],
+  ['pescoco', '<rect x="92" y="46" width="8" height="10"/>'],
   [null, '<ellipse cx="50" cy="190" rx="7" ry="10"/>'],
   [null, '<ellipse cx="84" cy="262" rx="10" ry="8"/>'],
   [null, '<ellipse cx="83" cy="324" rx="10" ry="6"/>'],

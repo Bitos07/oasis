@@ -1,6 +1,8 @@
 // Guarda os arquivos do app para funcionar sem internet.
 // Ao mudar algum arquivo, aumente a versão para o celular baixar de novo.
-const CACHE = 'meu-treino-v1';
+const CACHE = 'meu-treino-v2';
+// Fotos e passo a passo dos exercícios (CDN): guardados conforme você abre, para ver offline depois.
+const CACHE_MIDIA = 'meu-treino-midia-v1';
 const ARQUIVOS = [
   './',
   './index.html',
@@ -8,6 +10,7 @@ const ARQUIVOS = [
   './app.js',
   './storage.js',
   './data/exercicios.js',
+  './data/base.js',
   './data/modelos.js',
   './components/corpo.js',
   './components/grafico.js',
@@ -24,14 +27,31 @@ self.addEventListener('install', (ev) => {
 self.addEventListener('activate', (ev) => {
   ev.waitUntil(
     caches.keys()
-      .then((nomes) => Promise.all(nomes.filter((n) => n !== CACHE).map((n) => caches.delete(n))))
+      .then((nomes) => Promise.all(nomes.filter((n) => n !== CACHE && n !== CACHE_MIDIA).map((n) => caches.delete(n))))
       .then(() => self.clients.claim())
   );
 });
 
-// Responde do cache na hora e atualiza o cache em segundo plano.
 self.addEventListener('fetch', (ev) => {
-  if (ev.request.method !== 'GET' || new URL(ev.request.url).origin !== location.origin) return;
+  if (ev.request.method !== 'GET') return;
+  const url = new URL(ev.request.url);
+
+  // Mídia da CDN: as URLs têm o commit fixo, então nunca mudam — cache primeiro.
+  if (url.hostname === 'cdn.jsdelivr.net') {
+    ev.respondWith(
+      caches.open(CACHE_MIDIA).then(async (cache) => {
+        const salvo = await cache.match(ev.request);
+        if (salvo) return salvo;
+        const resp = await fetch(ev.request);
+        if (resp.ok || resp.type === 'opaque') cache.put(ev.request, resp.clone());
+        return resp;
+      })
+    );
+    return;
+  }
+
+  if (url.origin !== location.origin) return;
+  // Arquivos do app: responde do cache na hora e atualiza o cache em segundo plano.
   ev.respondWith(
     caches.open(CACHE).then(async (cache) => {
       const salvo = await cache.match(ev.request, { ignoreSearch: true });
