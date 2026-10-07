@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#14171c">
+  <meta name="description" content="Treinos, água e evolução na academia">
+  <title>Meu Treino</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Meu Treino">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header id="topo">
+    <button id="voltar" class="ico" aria-label="Voltar" hidden>‹</button>
+    <h1 id="titulo">Meu Treino</h1>
+  </header>
+
+  <main id="main"></main>
+
+  <div id="banner-treino" hidden></div>
+
+  <nav id="abas">
+    <a href="#/hoje" data-aba="hoje">
+      <svg viewBox="0 0 24 24"><path d="M12 3c3 4 6 7.2 6 11a6 6 0 0 1-12 0c0-3.8 3-7 6-11z"/></svg>Hoje</a>
+    <a href="#/treinos" data-aba="treinos">
+      <svg viewBox="0 0 24 24"><path d="M3 9v6M6 6v12M18 6v12M21 9v6M6 12h12"/></svg>Treinos</a>
+    <a href="#/catalogo" data-aba="catalogo">
+      <svg viewBox="0 0 24 24"><path d="M5 4h11l3 3v13H5zM9 9h7M9 13h7M9 17h4"/></svg>Catálogo</a>
+    <a href="#/historico" data-aba="historico">
+      <svg viewBox="0 0 24 24"><path d="M4 6h16v14H4zM4 10h16M8 3v5M16 3v5"/></svg>Histórico</a>
+    <a href="#/perfil" data-aba="perfil">
+      <svg viewBox="0 0 24 24"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21c1-4 4-6 8-6s7 2 8 6"/></svg>Perfil</a>
+  </nav>
+
+  <div id="sheet" hidden></div>
+  <div id="toast" role="status" aria-live="polite"></div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
